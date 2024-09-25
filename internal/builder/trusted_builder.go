@@ -1,5 +1,11 @@
 package builder
 
+import (
+	"github.com/google/go-containerregistry/pkg/name"
+
+	"github.com/buildpacks/pack/internal/config"
+)
+
 type KnownBuilder struct {
 	Vendor             string
 	Image              string
@@ -67,11 +73,28 @@ var KnownBuilders = []KnownBuilder{
 	},
 }
 
-var IsKnownTrustedBuilder = func(b string) bool {
+func IsKnownTrustedBuilder(builderName string) bool {
 	for _, knownBuilder := range KnownBuilders {
-		if b == knownBuilder.Image && knownBuilder.Trusted {
+		if builderName == knownBuilder.Image && knownBuilder.Trusted {
 			return true
 		}
 	}
 	return false
+}
+
+func IsTrustedBuilder(cfg config.Config, builderName string) (bool, error) {
+	builderReference, err := name.ParseReference(builderName)
+	if err != nil {
+		return false, err
+	}
+	for _, trustedBuilder := range cfg.TrustedBuilders {
+		trustedBuilderReference, err := name.ParseReference(trustedBuilder.Name)
+		if err != nil {
+			return false, err
+		}
+		if builderReference.Context() == trustedBuilderReference.Context() {
+			return true, nil
+		}
+	}
+	return false, nil
 }
